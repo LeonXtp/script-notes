@@ -1,0 +1,66 @@
+#! /bin/bash
+
+# find files including directories bigger than specified size under directory, with max searching depth of 1.
+
+if [[ $# -ne 2 ]]; then
+	echo "find files including directories bigger than specified size under directory, with max searching depth of 1"
+	echo "Usage: bigfile (K|M|G|T) dir"
+	exit
+fi
+
+SIZE=$(echo $1 | grep -oP "^[0-9]+?(?=((\.[0-9]+)?(K|M|G|T)))")
+UNIT=$(echo $1 | grep -oP "K|M|G|T")
+echo "=========== find file size bigger than: $SIZE$UNIT ==========="
+if [[ $SIZE = "" || $UNIT = "" ]]; then
+	echo "invalid params!"
+	exit
+fi
+
+match_size() {
+	file_match=false
+	file_size=$(echo $1 | grep -oP "^[0-9]+?(?=((\.[0-9]+)?(K|M|G|T)))")
+	size_unit=$(echo $1 | grep -oP "K|M|G|T")
+
+	if [[ $UNIT = "K" ]]; then
+		if [[ $size_unit = "K" ]]; then
+			if [[ $file_size -ge $SIZE ]]; then
+				file_match=true
+			fi
+		else
+			file_match=true
+		fi
+	elif [[ $UNIT = "M" ]]; then
+		if [[ $size_unit = "M" ]]; then
+			if [[ $file_size -ge $SIZE ]]; then
+				file_match=true
+			fi
+		elif [[ $size_unit = "G" || $size_unit = "T" ]]; then
+			file_match=true
+		fi
+	elif [[ $UNIT = "G" ]]; then
+		if [[ $size_unit = "G" ]]; then
+			if [[ $file_size -ge $SIZE ]]; then
+				file_match=true
+			fi
+		elif [[ $size_unit = "T" ]]; then
+			file_match=true
+		fi
+	elif [[ $UNIT = "T" ]]; then
+		if [[ $size_unit = "T" ]]; then
+			if [[ $file_size -ge $SIZE ]]; then
+				file_match=true
+			fi
+		fi
+	fi
+	if [[ $file_match = true ]]; then
+		echo "$1	$2"
+	fi
+}
+
+export -f match_size
+export SIZE=$SIZE
+export UNIT=$UNIT
+
+find $2 -maxdepth 1 -exec du -sh {} \; | xargs -I record bash -c 'match_size record'
+
+export -n match_size SIZE UNIT
